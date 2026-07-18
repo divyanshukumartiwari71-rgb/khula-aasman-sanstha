@@ -122,9 +122,9 @@ const isTransparentPage = transparentPages.includes(pathname);
           {/* Mobile hamburger button */}
           <div className="flex md:hidden items-center gap-3">
             <Link
-              href="/donate"
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#F97316] text-white font-semibold text-xs shadow-md hover:bg-orange-600 transition-all"
-            >
+  href="/donate"
+  className="hidden md:inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#F97316] text-white font-semibold text-xs shadow-md hover:bg-orange-600 transition-all"
+>
               <Heart className="w-3.5 h-3.5 fill-white" />
               Donate
             </Link>
@@ -136,7 +136,7 @@ const isTransparentPage = transparentPages.includes(pathname);
                 isScrolled || !isTransparentPage ? 'text-slate-700 hover:bg-slate-100' : 'text-white hover:bg-white/10'
               }`}
               aria-controls="mobile-menu"
-              aria-expanded="false"
+              aria-expanded={isOpen}
             >
               <span className="sr-only">Open main menu</span>
               {isOpen ? <X className="block h-6 w-6" /> : <Menu className="block h-6 w-6" />}
