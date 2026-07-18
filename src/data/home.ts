@@ -48,6 +48,6 @@ export const HOME_CONTENT = {
     title: "Support Our Mission Today",
     description: "Every contribution helps us reach one more child or empower one more household. Together, let's make a difference.",
     buttonText: "Donate Online",
-    sponsorText: "Sponsor a Child's Education for ₹1000/month",
+    sponsorText: "Sponsor a Child's Education for ₹5000/month",
   }
 };

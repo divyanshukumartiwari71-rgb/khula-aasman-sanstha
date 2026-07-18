@@ -9,7 +9,7 @@ import { IMAGES } from '@/lib/images';
 
 export default function DonationForm() {
   const [donationType, setDonationType] = useState<'one-time' | 'monthly' | 'sponsor'>('one-time');
-  const [amount, setAmount] = useState<string>('1000');
+  const [amount, setAmount] = useState<string>('2500');
   const [customAmount, setCustomAmount] = useState<string>('');
   
   const [formData, setFormData] = useState({
@@ -33,7 +33,7 @@ export default function DonationForm() {
 
   loadDonationSettings();
 }, []);
-const amounts = ['500', '1000', '2500', '5000'];
+const amounts = ['1500', '2500', '3500', '5000'];
 
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -52,7 +52,7 @@ const amounts = ['500', '1000', '2500', '5000'];
   };
 
   const getFinalAmount = () => {
-    if (donationType === 'sponsor') return 1000; // Fixed sponsor amount
+    if (donationType === 'sponsor') return 3500; // Fixed sponsor amount
     return parseFloat(customAmount || amount || '0');
   };
 
@@ -248,7 +248,7 @@ const amounts = ['500', '1000', '2500', '5000'];
               </div>
             ) : (
               <div className="bg-orange-50/50 border border-orange-100 p-4 rounded-xl text-sm text-orange-800">
-                <strong>Sponsorship package:</strong> Sponsoring a child covers tuition, study kits, daily snacks, and health support. This is fixed at <strong>₹1,000 / month</strong> per child.
+                <strong>Sponsorship package:</strong> Sponsoring a child covers tuition, study kits, daily snacks, and health support. This is fixed at <strong>₹5000 / month</strong> per child.
               </div>
             )}
 
