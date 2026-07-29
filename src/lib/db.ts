@@ -93,6 +93,17 @@ export interface SuccessStory {
   created_at: string;
 }
 
+export interface Achievement {
+  id: string;
+  title: string;
+  category: string;
+  description: string;
+  image_url: string;
+  achievement_date?: string;
+  display_order: number;
+  is_active: boolean;
+  created_at?: string;
+}
 export interface TeamMember {
   id: string;
   name: string;
@@ -128,6 +139,16 @@ export interface DonationSettings {
   created_at?: string;
 }
 
+export interface AppNotification {
+  id: string;
+  title: string;
+  message: string;
+  priority: string;
+  created_by?: string;
+  is_active: boolean;
+  created_at: string;
+}
+
 
 // Fallback in-memory database for server-side mock operations
 let mockDbInitialized = false;
@@ -142,6 +163,7 @@ let mockTeamMembers: TeamMember[] = [];
 let mockPartners: Partner[] = [];
 let mockTestimonials: Testimonial[] = [];
 let mockDonationSettings: DonationSettings | null = null;
+let mockNotifications: AppNotification[] = [];
 
 function getLocalStorage<T>(key: string, defaultValue: T): T {
   if (typeof window === 'undefined') return defaultValue;
@@ -264,7 +286,7 @@ function initMockDb() {
   // 3. Gallery
   mockGallery = getLocalStorage('kas_gallery', IMAGES.gallery);
 
-  // 4. Success Stories
+  // 4. Achievements
   mockSuccessStories = getLocalStorage('kas_success_stories', [
     {
       id: '1',
@@ -307,6 +329,8 @@ mockDonationSettings = getLocalStorage('kas_donation_settings', {
   branch: '',
   account_type: '',
 });
+
+mockNotifications = getLocalStorage("kas_notifications", []);
 
   mockDbInitialized = true;
 }
@@ -474,16 +498,23 @@ export async function getVolunteers(): Promise<Volunteer[]> {
 
     if (!error && data) {
       return data.map((v: any) => ({
-        id: v.id,
-        name: v.full_name,
-        email: v.email,
-        phone: v.phone,
-        address: v.address,
-        skills: v.skills,
-        experience: v.experience,
-        status: v.status,
-        created_at: v.created_at,
-      }));
+  id: v.id,
+  name: v.full_name,
+  email: v.email,
+  phone: v.phone,
+  address: v.address,
+  skills: v.skills,
+  experience: v.experience,
+  status: v.status,
+
+  created_at: v.created_at,
+
+  verification_requested_at:
+    v.verification_requested_at,
+
+  verification_reminder_count:
+    v.verification_reminder_count ?? 0,
+}));
     }
   }
 
@@ -884,3 +915,198 @@ export async function updateSiteBanner(
 }
 
 
+// ======================================================
+// ACHIEVEMENTS
+// ======================================================
+
+export async function getAchievements(): Promise<Achievement[]> {
+  if (isSupabaseConfigured()) {
+    const { data, error } = await supabase
+      .from("achievements")
+      .select("*")
+      .order("display_order", { ascending: true });
+
+    if (!error && data) {
+      return data as Achievement[];
+    }
+  }
+
+  return [];
+}
+
+export async function addAchievement(
+  achievement: Omit<Achievement, "id" | "created_at">
+) {
+  if (isSupabaseConfigured()) {
+    const { data, error } = await supabase
+      .from("achievements")
+      .insert([achievement])
+      .select();
+
+    if (!error && data) {
+      return {
+        success: true,
+        data: data[0] as Achievement,
+      };
+    }
+
+    return {
+      success: false,
+      error,
+    };
+  }
+
+  return {
+    success: false,
+  };
+}
+
+export async function updateAchievement(
+  id: string,
+  achievement: Partial<Achievement>
+) {
+  const { error } = await supabase
+    .from("achievements")
+    .update(achievement)
+    .eq("id", id);
+
+  if (error) {
+    return {
+      success: false,
+      error,
+    };
+  }
+
+  return {
+    success: true,
+  };
+}
+
+export async function deleteAchievement(id: string) {
+  const { error } = await supabase
+    .from("achievements")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    return {
+      success: false,
+      error,
+    };
+  }
+
+  return {
+    success: true,
+  };
+}
+// ======================================================
+// NOTIFICATIONS
+// ======================================================
+
+export async function getNotifications(){
+  if (isSupabaseConfigured()) {
+    const { data, error } = await supabase
+      .from("notifications")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (!error && data) {
+      return data as AppNotification[];
+    }
+  }
+
+  initMockDb();
+  return mockNotifications;
+}
+
+export async function addNotification(
+  notification: Omit<AppNotification, "id" | "created_at">
+) {
+  if (isSupabaseConfigured()) {
+    const { data, error } = await supabase
+      .from("notifications")
+      .insert([notification])
+      .select();
+
+    if (!error && data) {
+      return {
+        success: true,
+        data: data[0] as AppNotification,
+      };
+    }
+
+    console.error("Add Notification Error:", JSON.stringify(error, null, 2));
+
+return {
+  success: false,
+  error,
+};
+  }
+
+  initMockDb();
+
+  const newNotification: AppNotification = {
+    id: Date.now().toString(),
+    created_at: new Date().toISOString(),
+    ...notification,
+  };
+
+  mockNotifications = [newNotification, ...mockNotifications];
+
+  setLocalStorage("kas_notifications", mockNotifications);
+
+  return {
+    success: true,
+    data: newNotification,
+  };
+}
+export async function updateNotification(
+  id: string,
+  updates: Partial<AppNotification>
+) {
+  if (isSupabaseConfigured()) {
+    const { data, error } = await supabase
+      .from("notifications")
+      .update(updates)
+      .eq("id", id)
+      .select();
+
+    return {
+      success: !error,
+      data: data?.[0],
+      error,
+    };
+  }
+
+  initMockDb();
+
+  mockNotifications = mockNotifications.map((n) =>
+    n.id === id ? { ...n, ...updates } : n
+  );
+
+  setLocalStorage("kas_notifications", mockNotifications);
+
+  return { success: true };
+}
+
+export async function deleteNotification(id: string) {
+  if (isSupabaseConfigured()) {
+    const { error } = await supabase
+      .from("notifications")
+      .delete()
+      .eq("id", id);
+
+    return {
+      success: !error,
+      error,
+    };
+  }
+
+  initMockDb();
+
+  mockNotifications = mockNotifications.filter((n) => n.id !== id);
+
+  setLocalStorage("kas_notifications", mockNotifications);
+
+  return { success: true };
+}

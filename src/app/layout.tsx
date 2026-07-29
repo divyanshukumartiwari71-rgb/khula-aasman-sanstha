@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { Toaster } from "react-hot-toast";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
@@ -47,7 +48,17 @@ export default function RootLayout({
           {children}
         </main>
         <Footer />
-      </body>
+
+  <Toaster
+    position="top-right"
+    toastOptions={{
+      duration: 3000,
+      style: {
+        borderRadius: "10px",
+      },
+    }}
+  />
+</body>
     </html>
   );
 }

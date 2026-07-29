@@ -103,7 +103,7 @@ CREATE TABLE IF NOT EXISTS contacts (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
--- 8. Success Stories Table
+-- 8. Achievements Table
 CREATE TABLE IF NOT EXISTS success_stories (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     slug TEXT UNIQUE NOT NULL,

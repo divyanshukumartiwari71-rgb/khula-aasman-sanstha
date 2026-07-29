@@ -28,7 +28,7 @@ export default function Navbar() {
     { name: 'About Us', path: '/about' },
     { name: 'Programs', path: '/programs' },
     { name: 'Gallery', path: '/gallery' },
-    { name: 'Success Stories', path: '/success-stories' },
+    { name: 'Achievements', path: '/achievements' },
     { name: 'Volunteer', path: '/volunteer' },
     { name: 'Contact', path: '/contact' },
   ];
@@ -38,7 +38,7 @@ export default function Navbar() {
   '/',
   '/programs',
   '/gallery',
-  '/success-stories',
+  '/achievements',
   '/volunteer',
   '/contact',
   '/donate',

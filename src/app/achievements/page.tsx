@@ -46,7 +46,7 @@ export default async function SuccessStoriesPage() {
       <section className="py-20 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         {stories.length === 0 ? (
           <div className="text-center py-20 text-slate-400">
-            No success stories recorded yet. Check back soon!
+            No Achievements recorded yet. Check back soon!
           </div>
         ) : (
           <div className="space-y-24">

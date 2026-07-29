@@ -45,12 +45,53 @@ export default function AdminLoginPage() {
     try {
       if (isSupabaseConfigured()) {
         const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password
-        });
-        if (error) throw error;
-        
-        router.push('/admin/dashboard');
+  email,
+  password,
+});
+
+if (error) throw error;
+
+// Logged-in authenticated user
+const authUser = data.user;
+
+// Get admin profile using auth_user_id
+const { data: admin, error: adminError } = await supabase
+  .from("admins")
+  .select(`
+    id,
+    auth_user_id,
+    full_name,
+    email,
+    role,
+    status
+  `)
+  .eq("auth_user_id", authUser.id)
+  .single();
+
+// No matching admin
+if (adminError || !admin) {
+  await supabase.auth.signOut();
+  throw new Error("No administrator account is linked to this login.");
+}
+
+// Account disabled
+if (admin.status !== "active") {
+  await supabase.auth.signOut();
+  throw new Error("Your administrator account is not active.");
+}
+
+// Update last login
+await supabase
+  .from("admins")
+  .update({
+    last_login: new Date().toISOString(),
+  })
+  .eq("id", admin.id);
+
+// Store admin details
+localStorage.setItem("kas_admin", JSON.stringify(admin));
+
+router.push("/admin/dashboard");
       } else {
         // Fallback offline verification
         // Default testing credentials: admin@khulaaasmansanstha.org / admin123

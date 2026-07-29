@@ -1,7 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { ArrowRight, CheckCircle2, Award, Heart, Calendar, Sparkles, ShieldCheck, HelpCircle } from 'lucide-react';
-import { getHomepageContent, getPrograms, getSuccessStories, getPartners, getTestimonials } from '@/lib/db';
+import { getHomepageContent, getPrograms, getSuccessStories, getPartners, getTestimonials , getAchievements } from '@/lib/db';
 import { IMPACT_STATS } from '@/data/stats';
 import { HOME_CONTENT } from '@/data/home';
 
@@ -14,6 +14,7 @@ export default async function HomePage() {
   const successStories = await getSuccessStories();
   const partners = await getPartners();
   const testimonials = await getTestimonials();
+  const achievements = await getAchievements();
 
   // Highlight 3 programs for the homepage grid
   const featuredPrograms = programs.slice(0, 3);
@@ -264,13 +265,13 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* 6. Success Stories / Activities */}
+      {/* 6. Achievements / Activities */}
       <section className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between mb-12">
             <div>
               <span className="text-[#F97316] font-bold text-xs uppercase tracking-widest">Our Success</span>
-              <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-950 mt-2">Latest Activities & Success Stories</h2>
+              <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-950 mt-2">Latest Activities & Achievements</h2>
             </div>
             <Link
               href="/success-stories"

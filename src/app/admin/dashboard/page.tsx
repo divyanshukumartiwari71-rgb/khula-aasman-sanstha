@@ -7,8 +7,16 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { sendEmail } from "@/lib/email";
+import toast from "react-hot-toast";
+import NotificationsTab from "@/components/admin/NotificationsTab";
 import { donationVerificationTemplate } from "@/lib/emailTemplates/donationVerification";
-import { donationApprovedTemplate } from "@/lib/emailTemplates/donationApproved";
+import {
+  donationApprovedTemplate,
+  volunteerVerificationTemplate,
+  volunteerApprovedTemplate,
+  volunteerRejectedTemplate,
+} from "@/lib/emailTemplates/donationApproved";
+import { Pencil } from "lucide-react";
 import {
   LayoutDashboard,
   Home,
@@ -28,11 +36,14 @@ import {
   CheckCircle,
   FileText,
   User,
+  Shield,
+  Bell,
   Sparkles,
   Loader2
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import {
+  AppNotification,
   getHomepageContent,
   updateHomepageContent,
   getPrograms,
@@ -50,10 +61,27 @@ import {
   getSuccessStories,
   addSuccessStory,
   updateSuccessStory,
-  deleteSuccessStory
+  deleteSuccessStory,
+  getNotifications,
+  addNotification, 
+  updateNotification,
+  deleteNotification, 
 } from '@/lib/db';
 
-type Tab =| 'overview'| 'homepage'| 'programs'| 'success'| 'gallery'| 'volunteers'| 'donations'|'banner-settings'|'donation-settings'| 'contacts';
+type Tab =| 'overview'| 'homepage'| 'programs'| 'success'| 'achievements' | 'gallery'| 'volunteers'| 'donations'|'banner-settings'|'donation-settings'| 'contacts' | 'admins' | 'notifications';
+
+type Admin = {
+  id: string;
+  auth_user_id: string | null;
+  full_name: string;
+  email: string;
+  phone: string | null;
+  role: string;
+  status: string;
+  last_login: string | null;
+  avatar_url: string | null;
+  created_at: string;
+};
 
 export default function AdminDashboardPage() {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
@@ -66,6 +94,44 @@ export default function AdminDashboardPage() {
   const [selectedDonation, setSelectedDonation] = useState<any>(null);
   const [selectedVolunteer, setSelectedVolunteer] = useState<any>(null);
   const router = useRouter();
+  const [admins, setAdmins] = useState<Admin[]>([]);
+  const [adminsLoading, setAdminsLoading] = useState(false);  
+  const [adminSearch, setAdminSearch] = useState("");
+  const [adminRoleFilter, setAdminRoleFilter] = useState("all");
+  const [adminStatusFilter, setAdminStatusFilter] = useState("all");
+  const [showAddAdminModal, setShowAddAdminModal] = useState(false);
+  const [newAdminForm, setNewAdminForm] = useState({
+  full_name: "",
+  email: "",
+  phone: "",
+  role: "Admin",
+  password: "",
+  confirmPassword: "",
+});
+const [showNotificationModal, setShowNotificationModal] = useState(false);
+
+const [notificationForm, setNotificationForm] = useState({
+  title: "",
+  message: "",
+  priority: "Medium",
+});
+const [notifications, setNotifications] = useState<AppNotification[]>([]);
+
+const [creatingAdmin, setCreatingAdmin] = useState(false);
+const [showEditAdminModal, setShowEditAdminModal] = useState(false);
+
+const [editingAdmin, setEditingAdmin] = useState<Admin | null>(null);
+
+const [editAdminForm, setEditAdminForm] = useState({
+  id: "",
+  full_name: "",
+  email: "",
+  phone: "",
+  role: "",
+  status: "",
+});
+
+const [updatingAdmin, setUpdatingAdmin] = useState(false);
 
 
   // Data states
@@ -76,6 +142,10 @@ export default function AdminDashboardPage() {
   const [volunteers, setVolunteers] = useState<any[]>([]);
   const [donations, setDonations] = useState<any[]>([]);
   const [contacts, setContacts] = useState<any[]>([]);
+  const admin =
+  typeof window !== "undefined"
+    ? JSON.parse(localStorage.getItem("kas_admin") || "null")
+    : null;
   const totalVerifiedDonations = donations
   .filter(d => d.status?.toLowerCase() === 'verified')
   .reduce((sum, d) => sum + Number(d.amount), 0);
@@ -108,12 +178,14 @@ export default function AdminDashboardPage() {
     image_url: '/images/programs/child-education.svg'
   });
 
-  const [newGalleryForm, setNewGalleryForm] = useState({
+ const [newGalleryForm, setNewGalleryForm] = useState({
   title: '',
   category: 'education',
   caption: '',
   image_url: ''
 });
+
+const [selectedImage, setSelectedImage] = useState<File | null>(null);
 
 
 
@@ -143,17 +215,24 @@ export default function AdminDashboardPage() {
     checkAuth();
   }, [router]);
 
+  useEffect(() => {
+  if (activeTab === "admins") {
+    loadAdmins();
+  }
+}, [activeTab]);
+
   const loadAllData = async () => {
     try {
-      const [h, p, s, g, v, d, c] = await Promise.all([
-        getHomepageContent(),
-        getPrograms(),
-        getSuccessStories(),
-        getGallery(),
-        getVolunteers(),
-        getDonations(),
-        getContacts()
-      ]);
+      const [h, p, s, g, v, d, c, n] = await Promise.all([
+  getHomepageContent(),
+  getPrograms(),
+  getSuccessStories(),
+  getGallery(),
+  getVolunteers(),
+  getDonations(),
+  getContacts(),
+  getNotifications(),
+]);
 
       setHomeData(h);
       if (h) {
@@ -171,11 +250,181 @@ export default function AdminDashboardPage() {
       setVolunteers(v);
       setDonations(d);
       setContacts(c);
+      setNotifications(n);
     } catch (error) {
       console.error('Error loading dashboard data:', error);
       showNotification('Error fetching site content. Verify Supabase tables.', 'error');
     }
   };
+
+  const loadAdmins = async () => {
+  try {
+    setAdminsLoading(true);
+
+    const { data, error } = await supabase
+      .from("admins")
+      .select(`
+        id,
+        auth_user_id,
+        full_name,
+        email,
+        phone,
+        role,
+        status,
+        last_login,
+        avatar_url,
+        created_at
+      `)
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+
+    setAdmins(data || []);
+  } catch (error) {
+    console.error("Error loading admins:", error);
+    showNotification("Failed to load administrators.", "error");
+  } finally {
+    setAdminsLoading(false);
+  }
+};
+
+const createAdmin = async () => {
+  if (
+    !newAdminForm.full_name ||
+    !newAdminForm.email ||
+    !newAdminForm.role ||
+    !newAdminForm.password
+  ) {
+    toast.error("Please fill all required fields.");
+    return;
+  }
+
+  if (newAdminForm.password !== newAdminForm.confirmPassword) {
+    toast.error("Passwords do not match.");
+    return;
+  }
+
+  try {
+    setCreatingAdmin(true);
+
+    const response = await fetch("/api/admin/create", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(newAdminForm),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      toast.error(result.message);
+      return;
+    }
+
+    toast.success(result.message);
+
+    setShowAddAdminModal(false);
+
+    setNewAdminForm({
+      full_name: "",
+      email: "",
+      phone: "",
+      role: "Admin",
+      password: "",
+      confirmPassword: "",
+    });
+
+    await loadAdmins();
+
+  } catch (error) {
+    console.error(error);
+    toast.error("Something went wrong.");
+  } finally {
+    setCreatingAdmin(false);
+  }
+};
+
+const updateAdmin = async () => {
+  console.log("updateAdmin called");
+toast("Button clicked");
+  if (
+    !editAdminForm.full_name ||
+    !editAdminForm.role ||
+    !editAdminForm.status
+  ) {
+    toast.error("Please fill all required fields.");
+    return;
+  }
+
+  try {
+    setUpdatingAdmin(true);
+
+    const response = await fetch("/api/admin/update", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(editAdminForm),
+    });
+
+    const result = await response.json();
+    console.log("Response Status:", response.status);
+console.log("API Result:", result);
+
+    if (!response.ok) {
+      toast.error(result.message);
+      return;
+    }
+
+    toast.success(result.message);
+
+    setShowEditAdminModal(false);
+
+    setEditingAdmin(null);
+
+    await loadAdmins();
+
+  } catch (error) {
+    console.error(error);
+    toast.error("Something went wrong.");
+  } finally {
+    setUpdatingAdmin(false);
+  }
+};
+
+const openEditAdmin = (admin: Admin) => {
+toast.success("Edit clicked");
+  setEditingAdmin(admin);
+
+  setEditAdminForm({
+    id: admin.id,
+    full_name: admin.full_name,
+    email: admin.email,
+    phone: admin.phone || "",
+    role: admin.role,
+    status: admin.status,
+  });
+
+  setShowEditAdminModal(true);
+};
+
+const filteredAdmins = admins.filter((admin) => {
+  const matchesSearch =
+    admin.full_name.toLowerCase().includes(adminSearch.toLowerCase()) ||
+    admin.email.toLowerCase().includes(adminSearch.toLowerCase());
+
+  const matchesRole =
+    adminRoleFilter === "all" ||
+    admin.role === adminRoleFilter;
+
+  const matchesStatus =
+    adminStatusFilter === "all" ||
+    admin.status === adminStatusFilter;
+
+  return matchesSearch && matchesRole && matchesStatus;
+});
+
   const deleteContact = async (id: string) => {
   const confirmed = window.confirm(
     'Are you sure you want to permanently delete this contact?'
@@ -226,6 +475,76 @@ export default function AdminDashboardPage() {
     router.push('/admin/login');
   };
 
+  const handlePublishNotification = async () => {
+  if (!notificationForm.title.trim()) {
+    toast.error("Please enter notification title.");
+    return;
+  }
+
+  if (!notificationForm.message.trim()) {
+    toast.error("Please enter notification message.");
+    return;
+  }
+
+  const result = await addNotification({
+    title: notificationForm.title,
+    message: notificationForm.message,
+    priority: notificationForm.priority,
+    created_by: "Admin",
+    is_active: true,
+  });
+
+  if (!result.success) {
+    toast.error("Failed to publish notification.");
+    return;
+  }
+
+  toast.success("Notification published successfully!");
+
+  if (!result.success || !result.data) {
+  console.log(result);
+  toast.error("Failed to publish notification.");
+  return;
+}
+
+setNotifications((prev) => [result.data, ...prev]);
+
+  setNotificationForm({
+    title: "",
+    message: "",
+    priority: "Medium",
+  });
+
+  setShowNotificationModal(false);
+};
+const handleDeleteNotification = async (id: string) => {
+  await deleteNotification(id);
+  await loadAllData();
+};
+
+const handleEditNotification = async (notification: AppNotification) => {
+
+  const title = prompt("Title", notification.title);
+
+  if (title === null) return;
+
+  const message = prompt("Message", notification.message);
+
+  if (message === null) return;
+
+  const priority =
+    prompt("Priority (Low/Medium/High)", notification.priority) ??
+    notification.priority;
+
+  await updateNotification(notification.id, {
+    title,
+    message,
+    priority,
+  });
+
+  await loadAllData();
+};
+
   // ----------------------------------------------------
   // SUB-ACTIONS
   // ----------------------------------------------------
@@ -244,80 +563,221 @@ export default function AdminDashboardPage() {
   };
 
   const handleAddStory = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newStoryForm.title || !newStoryForm.summary || !newStoryForm.content) {
-      showNotification('Fill in all fields.', 'error');
-      return;
-    }
-    try {
-      const slug = newStoryForm.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
-      const payload = {
-        ...newStoryForm,
-        slug,
-        created_at: new Date().toISOString()
-      };
-      const res = await addSuccessStory(payload);
-      if (res.success) {
-        showNotification('New success story posted.');
-        setNewStoryForm({
-          title: '',
-          summary: '',
-          content: '',
-          category: 'education',
-          image_url: '/images/programs/child-education.svg'
-        });
-        loadAllData();
-      }
-    } catch (err) {
-      showNotification('Error creating story.', 'error');
-    }
-  };
-  const handleDeleteContact = async (id: string) => {
-  await deleteContact(id);
-};
-  const handleDeleteStory = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this story?')) return;
-    try {
-      const res = await deleteSuccessStory(id);
-      if (res.success) {
-        showNotification('Story removed.');
-        loadAllData();
-      }
-    } catch (err) {
-      showNotification('Delete failed.', 'error');
-    }
-  };
-
-  const handleAddGallery = async (e: React.FormEvent) => {
   e.preventDefault();
 
-  if (!newGalleryForm.title) {
-    showNotification('Please provide a title.', 'error');
+  if (
+    !newStoryForm.title ||
+    !newStoryForm.summary ||
+    !newStoryForm.content
+  ) {
+    showNotification("Fill in all fields.", "error");
+    return;
+  }
+
+  if (!selectedImage) {
+    showNotification("Please select an image.", "error");
     return;
   }
 
   try {
-    const res = await addGalleryImage({
-      ...newGalleryForm,
-      url: newGalleryForm.image_url
-    });
+    const fileName = `${Date.now()}-${selectedImage.name}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("achievements")
+      .upload(fileName, selectedImage, {
+        upsert: true,
+      });
+
+    if (uploadError) throw uploadError;
+
+    const { data } = supabase.storage
+      .from("achievements")
+      .getPublicUrl(fileName);
+
+    const imageUrl = data.publicUrl;
+
+    const slug = newStoryForm.title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)+/g, "");
+
+    const payload = {
+      ...newStoryForm,
+      image_url: imageUrl,
+      slug,
+      created_at: new Date().toISOString(),
+    };
+    
+    
+
+    const res = await addSuccessStory(payload);
 
     if (res.success) {
-      showNotification('Gallery image added.');
+      showNotification("Achievement added successfully.");
 
-      setNewGalleryForm({
-        title: '',
-        category: 'education',
-        caption: '',
-        image_url: '/images/gallery/gallery-1.svg'
+      setNewStoryForm({
+        title: "",
+        summary: "",
+        content: "",
+        category: "education",
+        image_url: "",
       });
+
+      setSelectedImage(null);
 
       loadAllData();
     }
   } catch (err) {
-    showNotification('Upload failed.', 'error');
+    console.error(err);
+    showNotification("Failed to add achievement.", "error");
   }
 };
+
+const handleVolunteerVerificationEmail = async (
+  volunteerName: string,
+  volunteerEmail: string
+) => {
+  try {
+    const res = await fetch("/api/send-email", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        to: volunteerEmail,
+        subject: "Volunteer Application - Document Verification",
+        html: volunteerVerificationTemplate(volunteerName),
+      }),
+    });
+
+    
+    const data = await res.json();
+
+if (data.success) {
+  const volunteer = volunteers.find(
+    (v) => v.email === volunteerEmail
+  );
+
+ console.log("Volunteer Found:", volunteer);
+
+if (volunteer) {
+  const { data, error } = await supabase
+  .from("volunteers")
+  .update({
+    status: "verification_requested",
+    verification_requested_at: new Date().toISOString(),
+    verification_reminder_count:
+      (volunteer.verification_reminder_count ?? 0) + 1,
+  })
+  .eq("id", volunteer.id)
+    .select();
+    const { data: updatedVolunteer } = await supabase
+  .from("volunteers")
+  .select(
+    "verification_requested_at, verification_reminder_count"
+  )
+  .eq("id", volunteer.id)
+  .single();
+
+console.log(updatedVolunteer);
+
+  console.log("Update Data:", data);
+  console.log("Update Error:", error);
+  await supabase.from("activity_logs").insert({
+  entity_type: "volunteer",
+  entity_id: volunteer.id,
+  action: "verification_requested",
+  description:
+    (volunteer.verification_reminder_count ?? 0) === 0
+      ? "Documents requested from volunteer."
+      : `Reminder #${(volunteer.verification_reminder_count ?? 0) + 1} sent to volunteer.`,
+  admin_id: admin?.id,
+  admin_name: admin?.full_name,
+});
+
+  loadAllData();
+}
+  showNotification("Verification email sent successfully.");
+} else {
+  showNotification("Failed to send email.", "error");
+}
+  } catch (err) {
+    console.error(err);
+    showNotification("Failed to send email.", "error");
+  }
+};
+  const handleDeleteContact = async (id: string) => {
+  await deleteContact(id);
+};
+  const handleDeleteStory = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this achievement?')) return;
+    try {
+      const res = await deleteSuccessStory(id);
+      if (res.success) {
+        showNotification('Achievement deleted successfully.');
+        loadAllData();
+      }
+    } catch (err) {
+      showNotification('Failed to delete achievement.', 'error');
+    }
+  };
+  
+ 
+
+ const handleAddGallery = async (e: React.FormEvent) => {
+  e.preventDefault();
+
+  if (!newGalleryForm.title) {
+    showNotification("Please provide a title.", "error");
+    return;
+  }
+
+  if (!selectedImage) {
+    showNotification("Please select an image.", "error");
+    return;
+  }
+
+  try {
+    const fileName = `${Date.now()}-${selectedImage.name}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("gallery")
+      .upload(fileName, selectedImage);
+
+    if (uploadError) throw uploadError;
+
+    const { data } = supabase.storage
+      .from("gallery")
+      .getPublicUrl(fileName);
+
+    const imageUrl = data.publicUrl;
+
+    const res = await addGalleryImage({
+      title: newGalleryForm.title,
+      category: newGalleryForm.category,
+      caption: newGalleryForm.caption,
+      image_url: imageUrl,
+      url: imageUrl,
+    });
+
+    if (res.success) {
+      showNotification("Gallery image added successfully.");
+
+      setNewGalleryForm({
+        title: "",
+        category: "education",
+        caption: "",
+        image_url: "",
+      });
+
+      setSelectedImage(null);
+      loadAllData();
+    }
+  } catch (error) {
+    console.error(error);
+    showNotification("Upload failed.", "error");
+  }
+ };
 
   const handleDeleteGallery = async (id: string) => {
     if (!confirm('Remove this photo?')) return;
@@ -328,21 +788,71 @@ export default function AdminDashboardPage() {
         loadAllData();
       }
     } catch (err) {
-      showNotification('Delete failed.', 'error');
+      showNotification('Failed to delete achievement.', 'error');
     }
   };
 
-  const handleUpdateVolunteer = async (id: string, status: 'approved' | 'rejected') => {
-    try {
-      const res = await updateVolunteerStatus(id, status);
-      if (res.success) {
-        showNotification(`Application marked as ${status}.`);
-        loadAllData();
-      }
-    } catch (err) {
-      showNotification('Update failed.', 'error');
+  const handleVolunteerApproval = async (
+  volunteerId: string,
+  volunteerName: string,
+  volunteerEmail: string
+) => {
+  try {
+    await updateVolunteerStatus(volunteerId, "approved");
+
+    const res = await sendEmail(
+      volunteerEmail,
+      "Volunteer Application Approved",
+      volunteerApprovedTemplate(volunteerName)
+    );
+
+    if (res.success) {
+      showNotification("Volunteer approved successfully.");
+      
+    } else {
+      showNotification("Failed to send approval email.", "error");
     }
-  };
+  } catch (err) {
+    console.error(err);
+    showNotification("Something went wrong.", "error");
+  }
+};
+
+
+  const handleUpdateVolunteer = async (
+  id: string,
+  status: "approved" | "rejected"
+) => {
+  try {
+    const volunteer = volunteers.find((v) => v.id === id);
+
+    const res = await updateVolunteerStatus(id, status);
+
+    if (!res.success) {
+      throw new Error("Update failed");
+    }
+
+    if (status === "approved" && volunteer?.email) {
+      await sendEmail(
+        volunteer.email,
+        "Volunteer Application Approved",
+        volunteerApprovedTemplate(volunteer.name)
+      );
+    }
+    if (status === "rejected" && volunteer?.email) {
+  await sendEmail(
+    volunteer.email,
+    "Volunteer Application Update",
+    volunteerRejectedTemplate(volunteer.name)
+  );
+}
+
+    showNotification(`Application marked as ${status}.`);
+    loadAllData();
+  } catch (err) {
+    showNotification("Update failed.", "error");
+  }
+};
 
   const handleUpdateDonation = async (
   id: string,
@@ -458,12 +968,22 @@ export default function AdminDashboardPage() {
               { id: 'overview', label: 'Overview Stats', icon: <LayoutDashboard className="w-4 h-4" /> },
               { id: 'homepage', label: 'Manage Homepage', icon: <Home className="w-4 h-4" /> },
               { id: 'programs', label: 'Manage Programs', icon: <BookOpen className="w-4 h-4" /> },
-              { id: 'success', label: 'Success Stories', icon: <Award className="w-4 h-4" /> },
+              { id: 'success', label: 'Achievements', icon: <Award className="w-4 h-4" /> },
               { id: 'gallery', label: 'Gallery Manager', icon: <ImageIcon className="w-4 h-4" /> },
               { id: 'volunteers', label: 'Volunteers Log', icon: <Users className="w-4 h-4" />, count: volunteers.filter(v => v.status === 'pending').length },
               { id: 'donations', label: 'Donations Log', icon: <Heart className="w-4 h-4" /> },
               { id: 'donation-settings',label: 'Donation Settings',icon: <CreditCard className="w-4 h-4" />},     
               { id: 'contacts', label: 'Messages Log', icon: <Mail className="w-4 h-4" />, count: contacts.filter(c => c.status === 'unread').length },
+              {
+    id: 'admins',
+    label: 'Admin Management',
+    icon: <Shield className="w-4 h-4" />
+},
+{
+  id: "notifications",
+  label: "Notifications",
+  icon: <Bell className="w-4 h-4" />
+},
               { id: 'banner-settings',label: 'Hero & Banners',icon: <ImageIcon className="w-4 h-4" />},
             ].map(tab => (
               <button
@@ -575,7 +1095,7 @@ export default function AdminDashboardPage() {
                 <div>
                   <h4 className="font-extrabold text-blue-950">Local Storage Mock DB Active</h4>
                   <p className="text-blue-700/80 text-xs mt-0.5 leading-relaxed">
-                    You can test adding success stories, uploading gallery references, approving volunteers, or recording transactions. Changes persist in this browser session. To publish permanently, hook up Supabase.
+                    You can test adding Achievements, uploading gallery references, approving volunteers, or recording transactions. Changes persist in this browser session. To publish permanently, hook up Supabase.
                   </p>
                 </div>
               </div>
@@ -720,119 +1240,178 @@ export default function AdminDashboardPage() {
         )}
 
         {activeTab === 'success' && (
-          <div className="space-y-8">
-            <div className="flex justify-between items-center">
-              <div>
-                <h1 className="text-3xl font-extrabold text-slate-900">Success Stories Panel</h1>
-                <p className="text-slate-500 text-sm mt-1">Publish and delete stories of change from Varanasi centers.</p>
-              </div>
-            </div>
+  <div className="space-y-8">
+    <div className="flex justify-between items-center">
+      <div>
+        <h1 className="text-3xl font-extrabold text-slate-900">
+          Achievements Management
+        </h1>
+        <p className="text-slate-500 text-sm mt-1">
+          Add, manage and showcase the achievements and impact of Khula Aasman Sanstha.
+        </p>
+      </div>
+    </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-              {/* Form Block */}
-              <div className="lg:col-span-5 bg-white p-6 rounded-2xl border border-slate-200 space-y-4">
-                <h3 className="font-bold text-slate-800 text-base">Write New Story</h3>
-                <form onSubmit={handleAddStory} className="space-y-4 text-sm">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-1">Story Title</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. Suman Joins College"
-                      value={newStoryForm.title}
-                      onChange={(e) => setNewStoryForm({ ...newStoryForm, title: e.target.value })}
-                      className="w-full px-4 py-2 rounded-xl border"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-1">Brief Summary Description</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. A brief single line introduction..."
-                      value={newStoryForm.summary}
-                      onChange={(e) => setNewStoryForm({ ...newStoryForm, summary: e.target.value })}
-                      className="w-full px-4 py-2 rounded-xl border"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-1">Full Detailed Story Narrative</label>
-                    <textarea
-                      rows={4}
-                      required
-                      placeholder="Write the full success narrative here..."
-                      value={newStoryForm.content}
-                      onChange={(e) => setNewStoryForm({ ...newStoryForm, content: e.target.value })}
-                      className="w-full px-4 py-2 rounded-xl border resize-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-1">Program Category</label>
-                    <select
-                      value={newStoryForm.category}
-                      onChange={(e) => setNewStoryForm({ ...newStoryForm, category: e.target.value })}
-                      className="w-full px-4 py-2 rounded-xl border bg-white"
-                    >
-                      <option value="education">Education</option>
-                      <option value="women">Women Empowerment</option>
-                      <option value="meals">Meals & Nutrition</option>
-                      <option value="rural">Rural Development</option>
-                      <option value="environment">Environment</option>
-                      <option value="sports">Sports & Skills</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-1">Placeholder Image Path</label>
-                    <input
-                      type="text"
-                      required
-                      value={newStoryForm.image_url}
-                      onChange={(e) => setNewStoryForm({ ...newStoryForm, image_url: e.target.value })}
-                      className="w-full px-4 py-2 rounded-xl border text-xs"
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold cursor-pointer"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Publish Story
-                  </button>
-                </form>
-              </div>
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      {/* Form Block */}
+      <div className="lg:col-span-5 bg-white p-6 rounded-2xl border border-slate-200 space-y-4">
+        <h3 className="font-bold text-slate-800 text-base">
+          Add Achievement
+        </h3>
 
-              {/* List Block */}
-              <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200 overflow-hidden">
-                <table className="w-full text-left text-sm border-collapse">
-                  <thead className="bg-slate-50 text-slate-500 border-b">
-                    <tr>
-                      <th className="px-4 py-3 font-bold">Title</th>
-                      <th className="px-4 py-3 font-bold">Category</th>
-                      <th className="px-4 py-3 font-bold">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {stories.map(story => (
-                      <tr key={story.id} className="hover:bg-slate-50/50">
-                        <td className="px-4 py-3 font-bold text-slate-800">{story.title}</td>
-                        <td className="px-4 py-3 text-slate-500 capitalize">{story.category}</td>
-                        <td className="px-4 py-3">
-                          <button
-                            onClick={() => handleDeleteStory(story.id)}
-                            className="text-rose-600 hover:text-rose-800 p-1.5 rounded hover:bg-rose-50 cursor-pointer"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+        <form onSubmit={handleAddStory} className="space-y-4 text-sm">
+          <div>
+            <label className="block text-xs font-bold text-slate-500 mb-1">
+              Achievement Title
+            </label>
+            <input
+              type="text"
+              required
+              placeholder="e.g. National NGO Excellence Award 2026"
+              value={newStoryForm.title}
+              onChange={(e) =>
+                setNewStoryForm({
+                  ...newStoryForm,
+                  title: e.target.value,
+                })
+              }
+              className="w-full px-4 py-2 rounded-xl border"
+            />
           </div>
-        )}
+
+          <div>
+            <label className="block text-xs font-bold text-slate-500 mb-1">
+              Achievement Summary
+            </label>
+            <input
+              type="text"
+              required
+              placeholder="A short description of the achievement"
+              value={newStoryForm.summary}
+              onChange={(e) =>
+                setNewStoryForm({
+                  ...newStoryForm,
+                  summary: e.target.value,
+                })
+              }
+              className="w-full px-4 py-2 rounded-xl border"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-500 mb-1">
+              Achievement Details
+            </label>
+            <textarea
+              rows={4}
+              required
+              placeholder="Describe the achievement..."
+              value={newStoryForm.content}
+              onChange={(e) =>
+                setNewStoryForm({
+                  ...newStoryForm,
+                  content: e.target.value,
+                })
+              }
+              className="w-full px-4 py-2 rounded-xl border resize-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-500 mb-1">
+              Achievement Category
+            </label>
+            <select
+              value={newStoryForm.category}
+              onChange={(e) =>
+                setNewStoryForm({
+                  ...newStoryForm,
+                  category: e.target.value,
+                })
+              }
+              className="w-full px-4 py-2 rounded-xl border bg-white"
+            >
+              <option value="education">Education</option>
+              <option value="women">Women Empowerment</option>
+              <option value="meals">Meals & Nutrition</option>
+              <option value="rural">Rural Development</option>
+              <option value="environment">Environment</option>
+              <option value="sports">Sports & Skills</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-500 mb-1">
+              Achievement Image
+            </label>
+            <input
+  type="file"
+  accept="image/*"
+  onChange={(e) => {
+    if (e.target.files && e.target.files[0]) {
+      setSelectedImage(e.target.files[0]);
+    }
+  }}
+  className="w-full px-4 py-2 rounded-xl border text-xs"
+/>
+          </div>
+
+          <button
+            type="submit"
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            Add Achievement
+          </button>
+        </form>
+      </div>
+
+      {/* List Block */}
+      <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200 overflow-hidden">
+        <div className="px-4 py-4 border-b bg-slate-50">
+          <h3 className="font-bold text-slate-800">
+            All Achievements
+          </h3>
+        </div>
+
+        <table className="w-full text-left text-sm border-collapse">
+          <thead className="bg-slate-50 text-slate-500 border-b">
+            <tr>
+              <th className="px-4 py-3 font-bold">Achievement Title</th>
+              <th className="px-4 py-3 font-bold">Category</th>
+              <th className="px-4 py-3 font-bold">Actions</th>
+            </tr>
+          </thead>
+
+          <tbody className="divide-y divide-slate-100">
+            {stories.map((story) => (
+              <tr key={story.id} className="hover:bg-slate-50/50">
+                <td className="px-4 py-3 font-bold text-slate-800">
+                  {story.title}
+                </td>
+
+                <td className="px-4 py-3 text-slate-500 capitalize">
+                  {story.category}
+                </td>
+
+                <td className="px-4 py-3">
+                  <button
+                    onClick={() => handleDeleteStory(story.id)}
+                    className="text-rose-600 hover:text-rose-800 p-1.5 rounded hover:bg-rose-50 cursor-pointer"
+                    title="Delete Achievement"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+)}
+
 
         {activeTab === 'gallery' && (
           <div className="space-y-8">
@@ -886,18 +1465,16 @@ export default function AdminDashboardPage() {
                     <label className="block text-xs font-bold text-slate-500 mb-1">
                     Upload Image
                   </label>
-
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) =>
-                     setNewGalleryForm({
-                        ...newGalleryForm,
-                       image_url: e.target.files?.[0]?.name || '',
-                      })
-                    }                    
-                    className="w-full px-4 py-2 rounded-xl border text-xs"
-                  />                                        
+<input
+  type="file"
+  accept="image/*"
+  onChange={(e) => {
+    if (e.target.files && e.target.files[0]) {
+      setSelectedImage(e.target.files[0]);
+    }
+  }}
+  className="w-full px-4 py-2 rounded-xl border text-xs"
+/>                                       
                   </div>
                   <button
                     type="submit"
@@ -929,6 +1506,7 @@ export default function AdminDashboardPage() {
                             onClick={() => handleDeleteGallery(img.id)}
                             className="text-rose-600 hover:text-rose-800 p-1.5 rounded hover:bg-rose-50 cursor-pointer"
                           >
+
                             <Trash2 className="w-4 h-4" />
                           </button>
                         </td>
@@ -940,6 +1518,202 @@ export default function AdminDashboardPage() {
             </div>
           </div>
         )}
+
+        {activeTab === 'admins' && (
+  <div className="space-y-6">
+
+    <div className="flex items-center justify-between">
+      <div>
+        <h2 className="text-2xl font-bold text-gray-900">
+          Admin Management
+        </h2>
+
+        <p className="text-sm text-gray-500 mt-1">
+          Manage administrator accounts, roles and permissions.
+        </p>
+      </div>
+
+      <button
+  onClick={() => setShowAddAdminModal(true)}
+  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition"
+>
+  + Add Admin
+</button>
+    </div>
+
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+  <div className="bg-white rounded-xl border p-4 shadow-sm">
+
+  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+    <input
+      type="text"
+      placeholder="Search by name or email..."
+      value={adminSearch}
+      onChange={(e) => setAdminSearch(e.target.value)}
+      className="border rounded-lg px-4 py-2"
+    />
+
+    <select
+      value={adminRoleFilter}
+      onChange={(e) => setAdminRoleFilter(e.target.value)}
+      className="border rounded-lg px-4 py-2"
+    >
+      <option value="all">All Roles</option>
+      <option value="Super Admin">Super Admin</option>
+      <option value="Admin">Admin</option>
+      <option value="Editor">Editor</option>
+    </select>
+
+    <select
+      value={adminStatusFilter}
+      onChange={(e) => setAdminStatusFilter(e.target.value)}
+      className="border rounded-lg px-4 py-2"
+    >
+      <option value="all">All Status</option>
+      <option value="active">Active</option>
+      <option value="inactive">Inactive</option>
+      <option value="suspended">Suspended</option>
+    </select>
+
+  </div>
+
+</div>
+  <div className="bg-white rounded-xl border p-5 shadow-sm">
+    <p className="text-sm text-gray-500">Total Admins</p>
+
+    <h3 className="text-3xl font-bold mt-2">
+      {admins.length}
+    </h3>
+  </div>
+
+  <div className="bg-white rounded-xl border p-5 shadow-sm">
+    <p className="text-sm text-gray-500">Active</p>
+
+    <h3 className="text-3xl font-bold text-green-600 mt-2">
+      {admins.filter(a => a.status === "active").length}
+    </h3>
+  </div>
+
+  <div className="bg-white rounded-xl border p-5 shadow-sm">
+    <p className="text-sm text-gray-500">Suspended</p>
+
+    <h3 className="text-3xl font-bold text-red-600 mt-2">
+      {admins.filter(a => a.status === "suspended").length}
+    </h3>
+  </div>
+
+  <div className="bg-white rounded-xl border p-5 shadow-sm">
+    <p className="text-sm text-gray-500">Never Logged In</p>
+
+    <h3 className="text-3xl font-bold text-blue-600 mt-2">
+      {admins.filter(a => !a.last_login).length}
+    </h3>
+  </div>
+
+</div>
+    <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
+
+      <table className="w-full">
+
+        <thead className="bg-gray-50">
+
+          <tr>
+
+            <th className="text-left px-6 py-4">Name</th>
+
+            <th className="text-left px-6 py-4">Email</th>
+
+            <th className="text-left px-6 py-4">Role</th>
+
+            <th className="text-left px-6 py-4">Status</th>
+
+            <th className="text-left px-6 py-4">Last Login</th>
+
+            <th className="text-right px-6 py-4">
+              Actions
+            </th>
+
+          </tr>
+
+        </thead>
+
+        <tbody>
+  {adminsLoading ? (
+    <tr>
+      <td colSpan={6} className="text-center py-8">
+        Loading administrators...
+      </td>
+    </tr>
+  ) : admins.length === 0 ? (
+    <tr>
+      <td colSpan={6} className="text-center py-8 text-gray-500">
+        No administrators found.
+      </td>
+    </tr>
+  ) : (
+    filteredAdmins.map((admin) => (
+      <tr key={admin.id} className="border-t hover:bg-gray-50">
+        <td className="px-6 py-4 font-medium">
+          {admin.full_name}
+        </td>
+
+        <td className="px-6 py-4">
+          {admin.email}
+        </td>
+
+        <td className="px-6 py-4">
+          {admin.role}
+        </td>
+
+        <td className="px-6 py-4">
+          <span
+            className={`px-2 py-1 rounded-full text-xs font-medium ${
+              admin.status === "active"
+                ? "bg-green-100 text-green-700"
+                : "bg-red-100 text-red-700"
+            }`}
+          >
+            {admin.status}
+          </span>
+        </td>
+
+        <td className="px-6 py-4">
+          {admin.last_login
+            ? new Date(admin.last_login).toLocaleString()
+            : "Never"}
+        </td>
+
+        <td className="px-6 py-4 text-right">
+          <button
+          onClick={() => openEditAdmin(admin)}
+            className="text-blue-600 hover:text-blue-800 font-medium"
+          >
+            Edit
+          </button>
+        </td>
+      </tr>
+    ))
+  )}
+</tbody>
+
+      </table>
+
+    </div>
+
+  </div>
+)}
+
+{activeTab === "notifications" && (
+  <NotificationsTab
+    notifications={notifications}
+    onCreate={() => {
+      setShowNotificationModal(true);
+    }}
+    onEdit={handleEditNotification}
+    onDelete={handleDeleteNotification}
+  />
+)}
 
         {activeTab === 'volunteers' && (
           <div className="space-y-6">
@@ -990,7 +1764,8 @@ export default function AdminDashboardPage() {
                           </span>
                         </td>
                         <td className="px-6 py-4 space-x-2">
-                          {vol.status === 'pending' && (
+                          {(vol.status === 'pending' ||
+                            vol.status === 'verification_requested') && (
                             <>
                               <button
                                 onClick={() => setSelectedVolunteer(vol)}
@@ -1010,9 +1785,24 @@ export default function AdminDashboardPage() {
                               >
                                 Reject
                               </button>
+                              <button
+  onClick={() =>
+    handleVolunteerVerificationEmail(
+      vol.name,
+      vol.email
+    )
+  }
+  className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-xs"
+>
+  {vol.status === "pending"
+    ? "Request Docs"
+    : "Send Reminder"}
+</button>
                             </>
                           )}
+                          
                         </td>
+                        
                       </tr>
                     ))}
                   </tbody>
@@ -1151,6 +1941,7 @@ export default function AdminDashboardPage() {
         {activeTab === 'banner-settings' && (
         <BannerSettings />
 )}
+
         {activeTab === 'donation-settings' && (
         <DonationSettings />
 )}
@@ -1396,6 +2187,52 @@ export default function AdminDashboardPage() {
         Volunteer Profile
       </h2>
 
+      <div className="mb-6 rounded-xl border border-slate-200 bg-slate-50 p-4">
+
+  <h3 className="font-semibold text-slate-800 mb-3">
+    Application Progress
+  </h3>
+
+  <div className="space-y-2 text-sm">
+
+    <div className="flex items-center gap-2">
+      <span className="text-green-600">✅</span>
+      <span>Application Submitted</span>
+    </div>
+
+    <div className="flex items-center gap-2">
+      <span>
+        {selectedVolunteer.status === "verification_requested" ||
+        selectedVolunteer.status === "approved"
+          ? "✅"
+          : "⚪"}
+      </span>
+
+      <span>Documents Requested</span>
+    </div>
+
+    <div className="flex items-center gap-2">
+      <span>
+        {selectedVolunteer.status === "approved"
+          ? "✅"
+          : selectedVolunteer.status === "rejected"
+          ? "❌"
+          : "🟡"}
+      </span>
+
+      <span>
+        {selectedVolunteer.status === "approved"
+          ? "Volunteer Approved"
+          : selectedVolunteer.status === "rejected"
+          ? "Application Rejected"
+          : "Waiting for Documents"}
+      </span>
+    </div>
+
+  </div>
+
+</div>
+
       <div className="grid grid-cols-2 gap-5">
 
         <div>
@@ -1417,6 +2254,38 @@ export default function AdminDashboardPage() {
           <p className="text-xs text-slate-500">Status</p>
           <p className="capitalize">{selectedVolunteer.status}</p>
         </div>
+        <div>
+  <p className="text-xs text-slate-500">Application Submitted</p>
+  <p>
+    {selectedVolunteer.created_at
+      ? new Date(selectedVolunteer.created_at).toLocaleString("en-IN", {
+          dateStyle: "medium",
+          timeStyle: "short",
+        })
+      : "N/A"}
+  </p>
+</div>
+
+<div>
+  <p className="text-xs text-slate-500">Last Document Request</p>
+  <p>
+    {selectedVolunteer.verification_requested_at
+      ? new Date(
+          selectedVolunteer.verification_requested_at + "Z"
+        ).toLocaleString("en-IN", {
+          timeZone: "Asia/Kolkata",
+          dateStyle: "medium",
+          timeStyle: "medium",
+        })
+      : "Not Requested Yet"}
+  </p>
+</div>
+<div>
+  <p className="text-xs text-slate-500">Reminders Sent</p>
+  <p>
+    {selectedVolunteer.verification_reminder_count ?? 0}
+  </p>
+</div>
 
         <div className="col-span-2">
           <p className="text-xs text-slate-500">Address</p>
@@ -1536,6 +2405,320 @@ export default function AdminDashboardPage() {
     </div>
   </div>
 )} 
+
+{showAddAdminModal && (
+  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div className="bg-white rounded-xl w-full max-w-lg p-6">
+
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-xl font-bold">
+          Add Administrator
+        </h2>
+
+        <button
+          onClick={() => setShowAddAdminModal(false)}
+          className="text-gray-500 hover:text-gray-700"
+        >
+          ✕
+        </button>
+      </div>
+
+      <div className="space-y-4">
+
+        <input
+          type="text"
+          placeholder="Full Name"
+          value={newAdminForm.full_name}
+          onChange={(e) =>
+            setNewAdminForm({
+              ...newAdminForm,
+              full_name: e.target.value,
+            })
+          }
+          className="w-full border rounded-lg px-4 py-2"
+        />
+
+        <input
+          type="email"
+          placeholder="Email"
+          value={newAdminForm.email}
+          onChange={(e) =>
+            setNewAdminForm({
+              ...newAdminForm,
+              email: e.target.value,
+            })
+          }
+          className="w-full border rounded-lg px-4 py-2"
+        />
+
+        <input
+          type="text"
+          placeholder="Phone"
+          value={newAdminForm.phone}
+          onChange={(e) =>
+            setNewAdminForm({
+              ...newAdminForm,
+              phone: e.target.value,
+            })
+          }
+          className="w-full border rounded-lg px-4 py-2"
+        />
+
+        <select
+          value={newAdminForm.role}
+          onChange={(e) =>
+            setNewAdminForm({
+              ...newAdminForm,
+              role: e.target.value,
+            })
+          }
+          className="w-full border rounded-lg px-4 py-2"
+        >
+          <option>Super Admin</option>
+          <option>Admin</option>
+          <option>Editor</option>
+        </select>
+
+        <input
+          type="password"
+          placeholder="Password"
+          value={newAdminForm.password}
+          onChange={(e) =>
+            setNewAdminForm({
+              ...newAdminForm,
+              password: e.target.value,
+            })
+          }
+          className="w-full border rounded-lg px-4 py-2"
+        />
+
+        <input
+          type="password"
+          placeholder="Confirm Password"
+          value={newAdminForm.confirmPassword}
+          onChange={(e) =>
+            setNewAdminForm({
+              ...newAdminForm,
+              confirmPassword: e.target.value,
+            })
+          }
+          className="w-full border rounded-lg px-4 py-2"
+        />
+
+      </div>
+
+      <div className="flex justify-end gap-3 mt-6">
+
+        <button
+          onClick={() => setShowAddAdminModal(false)}
+          className="px-4 py-2 border rounded-lg"
+        >
+          Cancel
+        </button>
+
+        <button
+  onClick={createAdmin}
+  disabled={creatingAdmin}
+  className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg"
+>
+  {creatingAdmin ? "Creating..." : "Create Admin"}
+</button>
+
+      </div>
+
+    </div>
+  </div>
+)}
+{showEditAdminModal && (
+  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div className="bg-white rounded-xl w-full max-w-lg p-6">
+
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-xl font-bold">
+          Edit Administrator
+        </h2>
+
+        <button
+          onClick={() => setShowEditAdminModal(false)}
+          className="text-gray-500 hover:text-gray-700"
+        >
+          ✕
+        </button>
+      </div>
+
+      <div className="space-y-4">
+
+        <input
+          type="text"
+          placeholder="Full Name"
+          value={editAdminForm.full_name}
+          onChange={(e) =>
+            setEditAdminForm({
+              ...editAdminForm,
+              full_name: e.target.value,
+            })
+          }
+          className="w-full border rounded-lg px-4 py-2"
+        />
+
+        <input
+          type="email"
+          value={editAdminForm.email}
+          readOnly
+          className="w-full border rounded-lg px-4 py-2 bg-gray-100 cursor-not-allowed"
+        />
+
+        <input
+          type="text"
+          placeholder="Phone"
+          value={editAdminForm.phone}
+          onChange={(e) =>
+            setEditAdminForm({
+              ...editAdminForm,
+              phone: e.target.value,
+            })
+          }
+          className="w-full border rounded-lg px-4 py-2"
+        />
+
+        <select
+          value={editAdminForm.role}
+          onChange={(e) =>
+            setEditAdminForm({
+              ...editAdminForm,
+              role: e.target.value,
+            })
+          }
+          className="w-full border rounded-lg px-4 py-2"
+        >
+          <option>Super Admin</option>
+          <option>Admin</option>
+          <option>Editor</option>
+        </select>
+
+        <select
+          value={editAdminForm.status}
+          onChange={(e) =>
+            setEditAdminForm({
+              ...editAdminForm,
+              status: e.target.value,
+            })
+          }
+          className="w-full border rounded-lg px-4 py-2"
+        >
+          <option value="active">Active</option>
+          <option value="suspended">Suspended</option>
+        </select>
+
+      </div>
+
+      <div className="flex justify-end gap-3 mt-6">
+
+        <button
+          onClick={() => setShowEditAdminModal(false)}
+          className="px-4 py-2 border rounded-lg"
+        >
+          Cancel
+        </button>
+
+        <button
+  onClick={updateAdmin}
+  disabled={updatingAdmin}
+  className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg"
+>
+  {updatingAdmin ? "Saving..." : "Save Changes"}
+</button>
+
+      </div>
+
+    </div>
+  </div>
+)}
+{showNotificationModal && (
+  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div className="bg-white rounded-xl w-full max-w-lg p-6">
+
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-xl font-bold">
+          Create Notification
+        </h2>
+
+        <button
+          onClick={() => setShowNotificationModal(false)}
+          className="text-gray-500 hover:text-gray-700"
+        >
+          ✕
+        </button>
+      </div>
+
+      <div className="space-y-4">
+
+        <input
+          type="text"
+          placeholder="Notification Title"
+          value={notificationForm.title}
+          onChange={(e) =>
+            setNotificationForm({
+              ...notificationForm,
+              title: e.target.value,
+            })
+          }
+          className="w-full border rounded-lg px-4 py-2"
+        />
+
+        <textarea
+          rows={5}
+          placeholder="Notification Message"
+          value={notificationForm.message}
+          onChange={(e) =>
+            setNotificationForm({
+              ...notificationForm,
+              message: e.target.value,
+            })
+          }
+          className="w-full border rounded-lg px-4 py-2"
+        />
+
+        <select
+          value={notificationForm.priority}
+          onChange={(e) =>
+            setNotificationForm({
+              ...notificationForm,
+              priority: e.target.value,
+            })
+          }
+          className="w-full border rounded-lg px-4 py-2"
+        >
+          <option>Low</option>
+          <option>Medium</option>
+          <option>High</option>
+        </select>
+
+      </div>
+
+      <div className="flex justify-end gap-3 mt-6">
+
+        <button
+          onClick={() => setShowNotificationModal(false)}
+          className="px-4 py-2 border rounded-lg"
+        >
+          Cancel
+        </button>
+
+        <button
+  type="button"
+  onClick={handlePublishNotification}
+  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+>
+  Publish
+</button>
+
+      </div>
+
+    </div>
+  </div>
+)}
+
       </main>
     </div>
   );
