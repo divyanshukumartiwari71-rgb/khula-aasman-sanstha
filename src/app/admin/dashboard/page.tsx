@@ -8,6 +8,7 @@ import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { sendEmail } from "@/lib/email";
 import toast from "react-hot-toast";
+import AccessControl from "@/components/admin/access-control/AccessControl";
 import NotificationsTab from "@/components/admin/NotificationsTab";
 import { donationVerificationTemplate } from "@/lib/emailTemplates/donationVerification";
 import {
@@ -68,7 +69,7 @@ import {
   deleteNotification, 
 } from '@/lib/db';
 
-type Tab =| 'overview'| 'homepage'| 'programs'| 'success'| 'achievements' | 'gallery'| 'volunteers'| 'donations'|'banner-settings'|'donation-settings'| 'contacts' | 'admins' | 'notifications';
+type Tab =| 'overview'| 'homepage'| 'programs'| 'success'| 'achievements' | 'gallery'| 'volunteers'| 'donations'|'banner-settings'|'donation-settings'| 'contacts' | 'admins' | 'notifications' | 'access-control';
 
 type Admin = {
   id: string;
@@ -132,6 +133,7 @@ const [editAdminForm, setEditAdminForm] = useState({
 });
 
 const [updatingAdmin, setUpdatingAdmin] = useState(false);
+const [allowedTabs, setAllowedTabs] = useState<string[]>([]);
 
 
   // Data states
@@ -192,6 +194,7 @@ const [selectedImage, setSelectedImage] = useState<File | null>(null);
   // Verify auth session on load
   useEffect(() => {
     const checkAuth = async () => {
+      console.log("checkAuth started");
       if (isSupabaseConfigured()) {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
@@ -210,6 +213,9 @@ const [selectedImage, setSelectedImage] = useState<File | null>(null);
       
       // Load all database metrics
       await loadAllData();
+      await loadSidebarPermissions();
+
+
       setLoading(false);
     };
     checkAuth();
@@ -344,6 +350,40 @@ const createAdmin = async () => {
     setCreatingAdmin(false);
   }
 };
+async function loadSidebarPermissions() {
+  try {
+    const admin = JSON.parse(
+      localStorage.getItem("kas_admin") || "null"
+    );
+
+    if (!admin) return;
+
+    const res = await fetch(
+      `/api/admin/access-control/user/${admin.id}/permissions`
+    );
+
+    const data = await res.json();
+
+    if (!data.success) return;
+
+    const tabs: string[] = [];
+
+    data.permissions.forEach((permission: any) => {
+      const enabled = data.rolePermissions.some(
+        (rp: any) => rp.permission_id === permission.id
+      );
+
+      if (enabled) {
+        tabs.push(permission.permission_key);
+      }
+    });
+
+    setAllowedTabs(tabs);
+  } catch (err) {
+    console.error(err);
+  }
+}
+
 
 const updateAdmin = async () => {
   console.log("updateAdmin called");
@@ -980,10 +1020,15 @@ console.log(updatedVolunteer);
     icon: <Shield className="w-4 h-4" />
 },
 {
-  id: "notifications",
-  label: "Notifications",
-  icon: <Bell className="w-4 h-4" />
+  id: "access-control",
+  label: "Access Control",
+  icon: <Shield className="w-4 h-4" />
 },
+//{
+  //id: "notifications",
+  //label: "Notifications",
+  //icon: <Bell className="w-4 h-4" />
+//},
               { id: 'banner-settings',label: 'Hero & Banners',icon: <ImageIcon className="w-4 h-4" />},
             ].map(tab => (
               <button
@@ -1560,7 +1605,7 @@ console.log(updatedVolunteer);
       className="border rounded-lg px-4 py-2"
     >
       <option value="all">All Roles</option>
-      <option value="Super Admin">Super Admin</option>
+      <option value="Super_Admin">Super Admin</option>
       <option value="Admin">Admin</option>
       <option value="Editor">Editor</option>
     </select>
@@ -1713,6 +1758,10 @@ console.log(updatedVolunteer);
     onEdit={handleEditNotification}
     onDelete={handleDeleteNotification}
   />
+)}
+
+{activeTab === "access-control" && (
+  <AccessControl />
 )}
 
         {activeTab === 'volunteers' && (
@@ -1938,6 +1987,8 @@ console.log(updatedVolunteer);
             </div>
           </div>
         )}
+
+        
         {activeTab === 'banner-settings' && (
         <BannerSettings />
 )}
