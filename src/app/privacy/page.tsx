@@ -61,7 +61,7 @@ export default function PrivacyPage() {
           <p className="bg-slate-50 p-4 rounded-xl font-semibold text-slate-800 text-xs sm:text-sm border border-slate-100">
             Khula Aasman Sanstha<br />
             Email: info@khulaaasmansanstha.org<br />
-            Address: B-23/45, Sector 4, Rohaniya, Varanasi, UP - 221108
+            Address: B-1/128-6A, Assi - Lanka Rd, Dumraw bagh colony, Bhelupur, Varanasi, Uttar Pradesh 221005
           </p>
 
           <div className="pt-6 border-t border-slate-100 text-center">

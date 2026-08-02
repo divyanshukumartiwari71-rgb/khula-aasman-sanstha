@@ -66,12 +66,20 @@ const { data: admin, error: adminError } = await supabase
     status
   `)
   .eq("auth_user_id", authUser.id)
-  .single();
+  .maybeSingle()
 
 // No matching admin
+console.log("ADMIN ERROR:", adminError);
+console.log("ADMIN DATA:", admin);
+console.log("AUTH USER:", authUser);
+console.log("ADMIN ERROR:", adminError);
+console.log("ADMIN:", admin);
+
 if (adminError || !admin) {
   await supabase.auth.signOut();
-  throw new Error("No administrator account is linked to this login.");
+  throw new Error(
+    adminError?.message || "No administrator account is linked to this login."
+  );
 }
 
 // Account disabled
