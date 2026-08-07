@@ -16,50 +16,58 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://khulaaaasmansanstha.com"),
+
   title: {
     default: "Khula Aasman Sanstha | Registered NGO in Varanasi",
-    template: "%s | Khula Aasman Sanstha"
+    template: "%s | Khula Aasman Sanstha",
   },
-  description: "Khula Aasman Sanstha is a registered non-profit organization (NGO) in Varanasi, India, working for Child Education, Women Empowerment, nutrition, and rural development.",
-  keywords: ["NGO Varanasi", "Khula Aasman Sanstha", "Varanasi NGO", "Child Education India", "Women Empowerment Varanasi", "Charity Varanasi"],
+
+  description:
+    "Khula Aasman Sanstha is a registered non-profit organization (NGO) in Varanasi, India, working for Child Education, Women Empowerment, Nutrition Support and Rural Development.",
+
+  keywords: [
+    "Khula Aasman Sanstha",
+    "NGO Varanasi",
+    "Child Education",
+    "Women Empowerment",
+    "Rural Development",
+    "Nutrition Support",
+    "NGO India",
+  ],
+
+  icons: {
+    icon: "/favicon.ico",
+    shortcut: "/favicon.ico",
+    apple: "/favicon.ico",
+  },
+
   openGraph: {
-    title: "Khula Aasman Sanstha | NGO Varanasi",
-    description: "Uplifting communities in Varanasi through Child Education, Women Empowerment, and Rural Development.",
-    url: "https://khulaaasmansanstha.org",
+    title: "Khula Aasman Sanstha",
+    description:
+      "Empowering communities through education, women empowerment and rural development.",
+
+    url: "https://khulaaaasmansanstha.com",
+
     siteName: "Khula Aasman Sanstha",
+
+    images: [
+      {
+        url: "/images/logo/logoimage.png",
+        width: 1200,
+        height: 630,
+      },
+    ],
+
     locale: "en_IN",
     type: "website",
   },
+
+  twitter: {
+    card: "summary_large_image",
+    title: "Khula Aasman Sanstha",
+    description:
+      "Official Website of Khula Aasman Sanstha",
+    images: ["/images/logo/logoimage.png"],
+  },
 };
-
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
-  return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased scroll-smooth`}
-    >
-      <body className="min-h-full flex flex-col bg-white text-slate-800">
-        <Navbar />
-        <main className="flex-grow">
-          {children}
-        </main>
-        <Footer />
-
-  <Toaster
-    position="top-right"
-    toastOptions={{
-      duration: 3000,
-      style: {
-        borderRadius: "10px",
-      },
-    }}
-  />
-</body>
-    </html>
-  );
-}
-
