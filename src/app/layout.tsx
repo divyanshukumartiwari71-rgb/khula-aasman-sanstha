@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://khulaaaasmansanstha.com"),
+  metadataBase: new URL("https://khulaaasmansanstha.com"),
 
   title: {
     default: "Khula Aasman Sanstha | Registered NGO in Varanasi",
@@ -43,31 +43,43 @@ export const metadata: Metadata = {
   },
 
   openGraph: {
-    title: "Khula Aasman Sanstha",
+    title: "Khula Aasman Sanstha | NGO Varanasi",
     description:
       "Empowering communities through education, women empowerment and rural development.",
-
-    url: "https://khulaaaasmansanstha.com",
-
+    url: "https://khulaaasmansanstha.com",
     siteName: "Khula Aasman Sanstha",
-
-    images: [
-      {
-        url: "/images/logo/logoimage.png",
-        width: 1200,
-        height: 630,
-      },
-    ],
-
     locale: "en_IN",
     type: "website",
   },
-
-  twitter: {
-    card: "summary_large_image",
-    title: "Khula Aasman Sanstha",
-    description:
-      "Official Website of Khula Aasman Sanstha",
-    images: ["/images/logo/logoimage.png"],
-  },
 };
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html
+      lang="en"
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased scroll-smooth`}
+    >
+      <body className="min-h-full">
+        <Navbar />
+
+        {children}
+
+        <Footer />
+
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            duration: 3000,
+            style: {
+              borderRadius: "10px",
+            },
+          }}
+        />
+      </body>
+    </html>
+  );
+}
