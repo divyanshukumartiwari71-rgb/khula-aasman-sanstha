@@ -70,12 +70,7 @@ pageHero: {
     role: 'Program Coordinator',
     image: getImagePath('team', 'program-coordinator.jpg')
   },
-  {
-    id: '3',
-    name: 'Utkarsh Sir',
-    role: 'Community Outreach Coordinator',
-    image: getImagePath('team', 'community-outreach-coordinator.jpg')
-  },
+  
   {
     id: '4',
     name: 'Ankit Sir',

@@ -55,9 +55,9 @@ export default function LeadershipSection() {
 
 {/* Joint Secretary */}
 <LeadershipCard
-  name="Rajat Mishra"
+  name="Shubham Pandey"
   designation="Joint Secretary"
-  description="Rajat Mishra supports the organization's administrative coordination, volunteer engagement, and program implementation. As Joint Secretary, he works closely with the leadership team to ensure smooth execution of community initiatives and strengthen the foundation's outreach activities."
+  description="Shubham Pandey supports the organization's administrative coordination, volunteer engagement, and program implementation. As Joint Secretary, he works closely with the leadership team to ensure smooth execution of community initiatives and strengthen the foundation's outreach activities."
   image="/images/team/joint-secretary.jpg"
 />
 
