@@ -2,7 +2,7 @@ import { MetadataRoute } from 'next';
 import { getPrograms, getSuccessStories } from '@/lib/db';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = 'https://khulaaasmansanstha.org';
+  const baseUrl = "https://khulaaasmansanstha.com";
 
   // Static routes
   const staticRoutes = [
