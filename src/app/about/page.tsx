@@ -12,64 +12,152 @@ export const metadata = {
 
 export default function AboutPage() {
   return (
-    <main className="relative overflow-hidden bg-white text-slate-900">
+    <main className="relative bg-white text-slate-900">
 
       {/* =========================================================
           GLOBAL DECORATIVE BACKGROUND
       ========================================================= */}
 
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
 
         {/* Soft pastel circles */}
-        <div className="absolute -left-28 top-32 h-72 w-72 rounded-full bg-blue-50" />
-        <div className="absolute -right-28 top-[420px] h-80 w-80 rounded-full bg-orange-50" />
-        <div className="absolute left-[18%] top-[850px] h-32 w-32 rounded-full bg-orange-50/70" />
-        <div className="absolute right-[15%] top-[1050px] h-40 w-40 rounded-full bg-blue-50/80" />
-        <div className="absolute -left-20 top-[1700px] h-72 w-72 rounded-full bg-blue-50/70" />
-        <div className="absolute -right-24 top-[2200px] h-72 w-72 rounded-full bg-orange-50/70" />
-        <div className="absolute left-[45%] top-[2900px] h-36 w-36 rounded-full bg-blue-50/70" />
+<div className="absolute -left-24 top-32 h-72 w-72 rounded-full bg-blue-100/40 blur-sm" />
+<div className="absolute -right-24 top-[500px] h-80 w-80 rounded-full bg-orange-100/40 blur-sm" />
 
-        {/* Left leaf clusters */}
-        <div className="absolute left-[-30px] top-[180px] rotate-[-15deg] text-blue-200/70">
-          <LeafBranch />
-        </div>
+<div className="absolute left-[12%] top-[900px] h-32 w-32 rounded-full bg-orange-100/50" />
+<div className="absolute right-[10%] top-[1100px] h-44 w-44 rounded-full bg-blue-100/50" />
 
-        <div className="absolute left-[-45px] top-[1050px] rotate-[-25deg] text-orange-200/60">
-          <LeafBranch />
-        </div>
+<div className="absolute -left-28 top-[1500px] h-80 w-80 rounded-full bg-blue-100/35 blur-sm" />
+<div className="absolute -right-24 top-[1900px] h-72 w-72 rounded-full bg-orange-100/40 blur-sm" />
 
-        <div className="absolute left-[-35px] top-[2050px] rotate-[-15deg] text-blue-200/60">
-          <LeafBranch />
-        </div>
+<div className="absolute left-[8%] top-[2450px] h-36 w-36 rounded-full bg-orange-100/45" />
+<div className="absolute right-[8%] top-[2750px] h-40 w-40 rounded-full bg-blue-100/45" />
 
-        <div className="absolute left-[-35px] bottom-[180px] rotate-[-25deg] text-orange-200/60">
-          <LeafBranch />
-        </div>
+<div className="absolute -left-24 top-[3200px] h-72 w-72 rounded-full bg-orange-100/35 blur-sm" />
+<div className="absolute -right-24 top-[3500px] h-80 w-80 rounded-full bg-blue-100/35 blur-sm" />
 
-        {/* Right leaf clusters */}
-        <div className="absolute right-[-30px] top-[300px] rotate-[15deg] scale-x-[-1] text-blue-200/70">
-          <LeafBranch />
-        </div>
+{/* Left botanical decorations */}
+<div className="absolute -left-10 top-[100px] rotate-[-15deg] text-blue-300/60">
+  <LeafBranch />
+</div>
 
-        <div className="absolute right-[-45px] top-[1200px] rotate-[25deg] scale-x-[-1] text-blue-200/60">
-          <LeafBranch />
-        </div>
+<div className="absolute -left-12 top-[750px] rotate-[-22deg] text-orange-300/50">
+  <LeafBranch />
+</div>
 
-        <div className="absolute right-[-30px] top-[1900px] rotate-[15deg] scale-x-[-1] text-orange-200/60">
-          <LeafBranch />
-        </div>
+<div className="absolute -left-10 top-[1450px] rotate-[-15deg] text-blue-300/55">
+  <LeafBranch />
+</div>
 
-        <div className="absolute right-[-40px] bottom-[100px] rotate-[25deg] scale-x-[-1] text-blue-200/60">
-          <LeafBranch />
-        </div>
+<div className="absolute -left-12 top-[2200px] rotate-[-20deg] text-orange-300/50">
+  <LeafBranch />
+</div>
 
+<div className="absolute -left-10 top-[3000px] rotate-[-15deg] text-blue-300/55">
+  <LeafBranch />
+</div>
+
+{/* Right botanical decorations */}
+<div className="absolute -right-10 top-[300px] rotate-[15deg] scale-x-[-1] text-blue-300/60">
+  <LeafBranch />
+</div>
+
+<div className="absolute -right-12 top-[950px] rotate-[20deg] scale-x-[-1] text-blue-300/55">
+  <LeafBranch />
+</div>
+
+<div className="absolute -right-10 top-[1700px] rotate-[15deg] scale-x-[-1] text-orange-300/50">
+  <LeafBranch />
+</div>
+
+<div className="absolute -right-12 top-[2450px] rotate-[20deg] scale-x-[-1] text-blue-300/55">
+  <LeafBranch />
+</div>
+
+<div className="absolute -right-10 top-[3200px] rotate-[15deg] scale-x-[-1] text-orange-300/50">
+  <LeafBranch />
+</div>
+
+{/* Small decorative dots */}
+<div className="absolute left-[6%] top-[600px] h-4 w-4 rounded-full bg-orange-200/70" />
+<div className="absolute right-[8%] top-[720px] h-6 w-6 rounded-full bg-blue-200/70" />
+
+<div className="absolute left-[14%] top-[1300px] h-5 w-5 rounded-full bg-blue-200/60" />
+<div className="absolute right-[15%] top-[1500px] h-4 w-4 rounded-full bg-orange-200/70" />
+
+<div className="absolute left-[8%] top-[2050px] h-6 w-6 rounded-full bg-orange-200/60" />
+<div className="absolute right-[10%] top-[2200px] h-5 w-5 rounded-full bg-blue-200/60" />
+
+<div className="absolute left-[16%] top-[2850px] h-4 w-4 rounded-full bg-blue-200/60" />
+<div className="absolute right-[14%] top-[3000px] h-6 w-6 rounded-full bg-orange-200/60" />
+{/* More botanical decorations — middle sections */}
+
+<div className="absolute -left-10 top-[450px] rotate-[-18deg] text-blue-300/50">
+  <LeafBranch />
+</div>
+
+<div className="absolute -right-10 top-[600px] rotate-[18deg] scale-x-[-1] text-orange-300/45">
+  <LeafBranch />
+</div>
+
+<div className="absolute -left-12 top-[1150px] rotate-[-20deg] text-blue-300/50">
+  <LeafBranch />
+</div>
+
+<div className="absolute -right-12 top-[1350px] rotate-[20deg] scale-x-[-1] text-orange-300/45">
+  <LeafBranch />
+</div>
+
+<div className="absolute -left-10 top-[1800px] rotate-[-15deg] text-orange-300/45">
+  <LeafBranch />
+</div>
+
+<div className="absolute -right-10 top-[2050px] rotate-[18deg] scale-x-[-1] text-blue-300/50">
+  <LeafBranch />
+</div>
+
+<div className="absolute -left-12 top-[2550px] rotate-[-20deg] text-blue-300/50">
+  <LeafBranch />
+</div>
+
+<div className="absolute -right-12 top-[2700px] rotate-[20deg] scale-x-[-1] text-orange-300/45">
+  <LeafBranch />
+</div>
+
+<div className="absolute -left-10 top-[3100px] rotate-[-18deg] text-orange-300/45">
+  <LeafBranch />
+</div>
+
+<div className="absolute -right-10 top-[3350px] rotate-[18deg] scale-x-[-1] text-blue-300/50">
+  <LeafBranch />
+</div>
+
+<div className="absolute -left-12 top-[3700px] rotate-[-20deg] text-blue-300/50">
+  <LeafBranch />
+</div>
+
+<div className="absolute -right-12 top-[3950px] rotate-[20deg] scale-x-[-1] text-orange-300/45">
+  <LeafBranch />
+</div>
+
+<div className="absolute -left-10 top-[4300px] rotate-[-18deg] text-orange-300/45">
+  <LeafBranch />
+</div>
+
+<div className="absolute -right-10 top-[4550px] rotate-[18deg] scale-x-[-1] text-blue-300/50">
+  <LeafBranch />
+</div>
+
+<div className="absolute -left-12 top-[4900px] rotate-[-20deg] text-blue-300/45">
+  <LeafBranch />
+</div>
       </div>
 
       {/* =========================================================
           HERO
       ========================================================= */}
 
-      <section className="relative pt-24 pb-16 sm:pt-28 sm:pb-20">
+      <section className="relative z-10 pt-24 pb-16 sm:pt-28 sm:pb-20">
         <div className="relative mx-auto max-w-6xl px-6 text-center">
 
           <div className="mb-5 flex items-center justify-center gap-4">
