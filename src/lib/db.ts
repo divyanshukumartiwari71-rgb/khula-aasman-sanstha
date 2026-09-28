@@ -498,23 +498,16 @@ export async function getVolunteers(): Promise<Volunteer[]> {
 
     if (!error && data) {
       return data.map((v: any) => ({
-  id: v.id,
-  name: v.full_name,
-  email: v.email,
-  phone: v.phone,
-  address: v.address,
-  skills: v.skills,
-  experience: v.experience,
-  status: v.status,
-
-  created_at: v.created_at,
-
-  verification_requested_at:
-    v.verification_requested_at,
-
-  verification_reminder_count:
-    v.verification_reminder_count ?? 0,
-}));
+        id: v.id,
+        name: v.full_name,
+        email: v.email,
+        phone: v.phone,
+        address: v.address,
+        skills: v.skills,
+        experience: v.experience,
+        status: v.status,
+        created_at: v.created_at,
+      }));
     }
   }
 
@@ -522,7 +515,7 @@ export async function getVolunteers(): Promise<Volunteer[]> {
   return mockVolunteers;
 }
 
-export async function addVolunteer(volunteer: Omit<Volunteer, 'id' | 'status' | 'created_at'>) {
+export async function addVolunteers(volunteer: Omit<Volunteer, 'id' | 'status' | 'created_at'>) {
   if (isSupabaseConfigured()) {
     const { data, error } = await supabase
   .from('volunteers')

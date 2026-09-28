@@ -52,7 +52,7 @@ import {
   getGallery,
   addGalleryImage,
   deleteGalleryImage,
-  getVolunteers,
+  getVolunteer,
   updateVolunteerStatus,
   getDonations,
   updateDonationStatus,
