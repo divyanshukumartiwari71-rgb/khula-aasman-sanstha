@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Sparkles, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
-import { addVolunteer } from '@/lib/db';
+import { addVolunteers } from '@/lib/db';
 
 export default function VolunteerForm() {
   const [formData, setFormData] = useState({
@@ -22,29 +22,54 @@ export default function VolunteerForm() {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    console.log("Submit button clicked");
-    e.preventDefault();
-    if (!formData.name || !formData.email || !formData.phone || !formData.address) {
-      setStatus('error');
-      setErrorMessage('Please fill in all required fields (Name, Email, Phone, and Address).');
-      return;
+  console.log("Submit button clicked");
+  e.preventDefault();
+
+  if (!formData.name || !formData.email || !formData.phone || !formData.address) {
+    setStatus('error');
+    setErrorMessage('Please fill in all required fields (Name, Email, Phone, and Address).');
+    return;
+  }
+
+  setStatus('submitting');
+
+  try {
+    const response = await fetch('/api/volunteers', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(formData),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      throw new Error(result.error || 'Database operation failed');
     }
 
-    setStatus('submitting');
-    try {
-      const response = await addVolunteer(formData);
-      if (response.success) {
-        setStatus('success');
-        setFormData({ name: '', email: '', phone: '', address: '', skills: '', experience: '' });
-      } else {
-        throw new Error('Database operation failed');
-      }
-    } catch (error) {
-      console.error('Volunteer Form error:', error);
-      setStatus('error');
-      setErrorMessage('Something went wrong. Please check your network and try again.');
-    }
-  };
+    setStatus('success');
+
+    setFormData({
+      name: '',
+      email: '',
+      phone: '',
+      address: '',
+      skills: '',
+      experience: '',
+    });
+  } catch (error) {
+    console.error('Volunteer Form error:', error);
+
+    setStatus('error');
+
+    setErrorMessage(
+      error instanceof Error
+        ? error.message
+        : 'Something went wrong. Please try again.'
+    );
+  }
+};
 
   return (
     <div className="bg-white p-8 rounded-2xl shadow-xl border border-slate-100 max-w-2xl mx-auto">

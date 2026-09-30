@@ -52,8 +52,8 @@ import {
   getGallery,
   addGalleryImage,
   deleteGalleryImage,
-  getVolunteer,
-  updateVolunteerStatus,
+  getVolunteers,
+  updateVolunteersStatus,
   getDonations,
   updateDonationStatus,
   getContacts,
@@ -838,7 +838,7 @@ console.log(updatedVolunteer);
   volunteerEmail: string
 ) => {
   try {
-    await updateVolunteerStatus(volunteerId, "approved");
+    await updateVolunteersStatus(volunteerId, "approved");
 
     const res = await sendEmail(
       volunteerEmail,
@@ -866,7 +866,7 @@ console.log(updatedVolunteer);
   try {
     const volunteer = volunteers.find((v) => v.id === id);
 
-    const res = await updateVolunteerStatus(id, status);
+    const res = await updateVolunteersStatus(id, status);
 
     if (!res.success) {
       throw new Error("Update failed");
